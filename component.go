@@ -20,7 +20,7 @@ const (
 )
 
 // DefaultComponentMode is the preselected functioning mode of all components being run.
-var DefaultComponentMode = ComponentModeAsync
+const defaultComponentMode = ComponentModeAsync
 
 // Package-internal interface that Component conforms to - simplifies RunProc() code
 type component interface {
@@ -316,7 +316,7 @@ func RunProc(c component) bool {
 				}
 				if handlers[chosen].onRecv.IsValid() {
 					handlersDone.Add(1)
-					if componentMode == ComponentModeAsync || componentMode == ComponentModeUndefined && DefaultComponentMode == ComponentModeAsync {
+					if componentMode == ComponentModeAsync || componentMode == ComponentModeUndefined && defaultComponentMode == ComponentModeAsync {
 						// Async mode
 						go recvHandler(handlers[chosen].onRecv, recv)
 					} else {

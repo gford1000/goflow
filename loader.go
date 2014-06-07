@@ -52,8 +52,7 @@ func ParseJSON(js []byte) Graph {
 
 	constructor := func() interface{} {
 		// Create a new Graph
-		net := new(graph)
-		net.InitGraphState()
+		net := factory(graphConstructor).(*graph)
 
 		// Add processes to the network
 		for procName, procValue := range descr.Processes {

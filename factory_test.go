@@ -4,10 +4,29 @@ import (
 	"testing"
 )
 
+// Creates a graph that will be loaded at run-time
+func newDummyNet() interface{} {
+	net := factory(graphConstructor).(*graph)
+
+	net.AddNew("echoer", "e1")
+	net.AddNew("echoer", "e2")
+
+	net.Connect("e1", "Out", "e2", "In")
+
+	net.MapInPort("In", "e1", "In")
+	net.MapOutPort("Out", "e2", "Out")
+
+	return net
+}
+
+func init() {
+	Register("DummyNet", newDummyNet)
+}
+
 // Tests run-time process creating with flow.Factory
 func TestFactory(t *testing.T) {
 	procs := make(map[string]interface{})
-	procs["e1"] = Factory("echoer")
+	procs["e1"] = factory("echoer")
 	in, out := make(chan int), make(chan int)
 	e1 := procs["e1"].(*echoer)
 	e1.In = in
@@ -26,8 +45,7 @@ func TestFactory(t *testing.T) {
 
 // Tests connection between 2 processes created at run-time
 func TestFactoryConnection(t *testing.T) {
-	net := new(graph)
-	net.InitGraphState()
+	net := factory(graphConstructor).(*graph)
 
 	net.AddNew("echoer", "e1")
 	net.AddNew("echoer", "e2")
@@ -54,30 +72,9 @@ func TestFactoryConnection(t *testing.T) {
 	}
 }
 
-// Creates a graph that will be loaded at run-time
-func newDummyNet() interface{} {
-	net := new(graph)
-	net.InitGraphState()
-
-	net.AddNew("echoer", "e1")
-	net.AddNew("echoer", "e2")
-
-	net.Connect("e1", "Out", "e2", "In")
-
-	net.MapInPort("In", "e1", "In")
-	net.MapOutPort("Out", "e2", "Out")
-
-	return net
-}
-
-func init() {
-	Register("DummyNet", newDummyNet)
-}
-
 // Tests adding subgraph components at run-time
 func TestFactorySubgraph(t *testing.T) {
-	net := new(graph)
-	net.InitGraphState()
+	net := factory(graphConstructor).(*graph)
 
 	net.AddNew("DummyNet", "d1")
 

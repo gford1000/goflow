@@ -228,8 +228,7 @@ func (i *initfin) Finish() {
 }
 
 func createNet() *graph {
-	net := new(graph)
-	net.InitGraphState()
+	net := factory(graphConstructor).(*graph)
 	net.waitGrp.Add(1)
 	return net
 }

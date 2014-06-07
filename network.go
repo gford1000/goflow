@@ -5,6 +5,21 @@ import (
 	"sync"
 )
 
+const graphConstructor = "Graph"
+
+// NewGraph creates a new graph that can be modified at run-time.
+// Implements ComponentConstructor interace, so can it be used with Factory.
+func newGraph() interface{} {
+	net := new(graph)
+	net.InitGraphState()
+	return net
+}
+
+// Register an empty graph component in the registry
+func init() {
+	Register(graphConstructor, newGraph)
+}
+
 const (
 	defaultBufferSize      = 0  // DefaultBufferSize is the default channel buffer capacity.
 	defaultNetworkCapacity = 32 // DefaultNetworkCapacity is the default capacity of network's processes/ports maps.
@@ -51,7 +66,7 @@ type portMapper interface {
 }
 
 type Graph interface {
-	InitGraphState()                                  // Initialise
+	InitGraphState()                                  // Initialise the graph
 	GetNet() Graph                                    // Retrieve parent graph
 	SetNet(net Graph)                                 // Set parent graph
 	Run()                                             // Run this graph
@@ -117,19 +132,6 @@ func (n *graph) InitGraphState() {
 	n.ready = make(chan struct{})
 }
 
-// NewGraph creates a new graph that can be modified at run-time.
-// Implements ComponentConstructor interace, so can it be used with Factory.
-func newGraph() interface{} {
-	net := new(graph)
-	net.InitGraphState()
-	return net
-}
-
-// Register an empty graph component in the registry
-func init() {
-	Register("Graph", newGraph)
-}
-
 // Add adds a new process with a given name to the network.
 // It returns true on success or panics and returns false on error.
 func (n *graph) Add(c interface{}, name string) bool {
@@ -149,15 +151,12 @@ func (n *graph) Add(c interface{}, name string) bool {
 // AddGraph adds a new blank graph instance to a network. That instance can
 // be modified then at run-time.
 func (n *graph) AddGraph(name string) bool {
-	net := new(graph)
-	net.InitGraphState()
-	return n.Add(net, name)
+	return n.Add(factory(graphConstructor).(*graph), name)
 }
 
 // AddNew creates a new process instance using component factory and adds it to the network.
 func (n *graph) AddNew(componentName string, processName string) bool {
-	proc := Factory(componentName)
-	return n.Add(proc, processName)
+	return n.Add(factory(componentName), processName)
 }
 
 func (n *graph) Finished() {
