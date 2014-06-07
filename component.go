@@ -6,9 +6,11 @@ import (
 	"sync"
 )
 
+type ComponentMode int8
+
 const (
 	// ComponentModeUndefined stands for a fallback component mode (Async).
-	ComponentModeUndefined = iota
+	ComponentModeUndefined ComponentMode = iota
 	// ComponentModeAsync stands for asynchronous functioning mode.
 	ComponentModeAsync
 	// ComponentModeSync stands for synchronous functioning mode.
@@ -26,7 +28,7 @@ type component interface {
 	setIsRunning(running bool)
 	getNet() *Graph
 	setNet(g *Graph)
-	getMode() int8
+	getMode() ComponentMode
 	getPoolSize() uint8
 	setPoolSize(size uint8)
 	getTerm() chan struct{}
@@ -42,7 +44,7 @@ type Component struct {
 	// or to change its structure at run time.
 	net *Graph
 	// Mode is component's functioning mode.
-	mode int8
+	mode ComponentMode
 	// PoolSize is used to define pool size when using ComponentModePool.
 	poolSize uint8
 	// Term chan is used to terminate the process immediately without closing
