@@ -63,7 +63,7 @@ type summarizer struct {
 
 func newSummarizer() interface{} {
 	s := new(summarizer)
-	s.Component.Mode = ComponentModeSync
+	s.Component.setMode(ComponentModeSync)
 	return s
 }
 

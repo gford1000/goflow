@@ -134,17 +134,16 @@ func (n *Graph) Add(c interface{}, name string) bool {
 	}
 	// Set the link to self in the proccess so that it could use it
 	var vNet reflect.Value
-	vCom := v.FieldByName("Component")
-	if vCom.IsValid() && vCom.Type().Name() == "Component" {
-		vNet = vCom.FieldByName("Net")
+	if vCom, ok := c.(component); ok {
+		vCom.setNet(n)
 	} else {
 		vGraph := v.FieldByName("Graph")
 		if vGraph.IsValid() && vGraph.Type().Name() == "Graph" {
 			vNet = vGraph.FieldByName("Net")
 		}
-	}
-	if vNet.IsValid() && vNet.CanSet() {
-		vNet.Set(reflect.ValueOf(n))
+		if vNet.IsValid() && vNet.CanSet() {
+			vNet.Set(reflect.ValueOf(n))
+		}
 	}
 	// Add to the map of processes
 	n.procs[name] = c

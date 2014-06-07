@@ -43,6 +43,7 @@ func TestSingleInput(t *testing.T) {
 			t.Errorf("%d != %d", i2, ix2)
 		}
 	}
+
 	// Shutdown the component
 	close(in)
 }
@@ -53,18 +54,26 @@ type locker struct {
 	In  <-chan int
 	Out chan<- int
 
-	StateLock *sync.Mutex
+	myLock *sync.Mutex
 
 	counter int
 	sum     int
 }
 
-// Creates a locker instance. This is required because StateLock must be a pointer
+func (t *locker) Lock() {
+	t.myLock.Lock()
+}
+
+func (t *locker) Unlock() {
+	t.myLock.Unlock()
+}
+
+// Creates a locker instance.
 func newLocker() *locker {
 	l := new(locker)
 	l.counter = 0
 	l.sum = 0
-	l.StateLock = new(sync.Mutex)
+	l.myLock = new(sync.Mutex)
 	return l
 }
 
@@ -111,6 +120,7 @@ func TestStateLock(t *testing.T) {
 	}
 	// Send the close signal
 	close(in)
+
 	// Get the result and check if it is consistent
 	sum2 := <-out
 	if sum2 != sum {
@@ -133,7 +143,7 @@ func newSyncLocker() *syncLocker {
 	l := new(syncLocker)
 	l.counter = 0
 	l.sum = 0
-	l.Component.Mode = ComponentModeSync // Change this to ComponentModeAsync and the test will fail
+	l.Component.setMode(ComponentModeSync) // Change this to ComponentModeAsync and the test will fail
 	return l
 }
 
@@ -217,13 +227,18 @@ func (i *initfin) Finish() {
 	testInitFinFlag = 456
 }
 
+func createNet() *Graph {
+	net := new(Graph)
+	net.InitGraphState()
+	net.waitGrp.Add(1)
+	return net
+}
+
 // Tests user initialization and finalization functions
 func TestInitFinish(t *testing.T) {
 	// Create and run the component
 	i := new(initfin)
-	i.Net = new(Graph)
-	i.Net.InitGraphState()
-	i.Net.waitGrp.Add(1)
+	i.setNet(createNet())
 	in := make(chan int)
 	out := make(chan int)
 	i.In = in
@@ -237,7 +252,7 @@ func TestInitFinish(t *testing.T) {
 	}
 	// Shut the component down and wait for Finish() code
 	close(in)
-	i.Net.waitGrp.Wait()
+	i.getNet().waitGrp.Wait()
 	if testInitFinFlag != 456 {
 		t.Errorf("%d != %d", testInitFinFlag, 456)
 	}
@@ -260,15 +275,13 @@ func (c *closeTest) OnInClose() {
 // Tests close handler of input ports
 func TestClose(t *testing.T) {
 	c := new(closeTest)
-	c.Net = new(Graph)
-	c.Net.InitGraphState()
-	c.Net.waitGrp.Add(1)
+	c.setNet(createNet())
 	in := make(chan int)
 	c.In = in
 	RunProc(c)
 	in <- 1
 	close(in)
-	c.Net.waitGrp.Wait()
+	c.getNet().waitGrp.Wait()
 	if closeTestFlag != 789 {
 		t.Errorf("%d != %d", closeTestFlag, 789)
 	}
@@ -296,15 +309,13 @@ func (s *shutdownTest) Shutdown() {
 // Tests close handler of input ports
 func TestShutdown(t *testing.T) {
 	s := new(shutdownTest)
-	s.Net = new(Graph)
-	s.Net.InitGraphState()
-	s.Net.waitGrp.Add(1)
+	s.setNet(createNet())
 	in := make(chan int)
 	s.In = in
 	RunProc(s)
 	in <- 1
 	close(in)
-	s.Net.waitGrp.Wait()
+	s.getNet().waitGrp.Wait()
 	if shutdownTestFlag != 789 {
 		t.Errorf("%d != %d", shutdownTestFlag, 789)
 	}
@@ -312,8 +323,8 @@ func TestShutdown(t *testing.T) {
 
 func TestPoolMode(t *testing.T) {
 	d := new(doubler)
-	d.Component.Mode = ComponentModePool
-	d.Component.PoolSize = 4
+	d.Component.setMode(ComponentModePool)
+	d.Component.setPoolSize(4)
 	in := make(chan int, 20)
 	out := make(chan int, 20)
 	d.In = in
@@ -373,8 +384,8 @@ func TestStopProc(t *testing.T) {
 		t.Errorf("Invalid final signal: %d", fin)
 	}
 	// Run again in Pool mode
-	s.Component.Mode = ComponentModePool
-	s.Component.PoolSize = 4
+	s.Component.setMode(ComponentModePool)
+	s.Component.setPoolSize(4)
 	RunProc(s)
 	for i := 0; i < 10; i++ {
 		in <- i

@@ -61,11 +61,11 @@ func ParseJSON(js []byte) *Graph {
 			// Process mode detection
 			if procValue.Metadata.PoolSize > 0 {
 				proc := net.Get(procName).(*Component)
-				proc.Mode = ComponentModePool
-				proc.PoolSize = uint8(procValue.Metadata.PoolSize)
+				proc.setMode(ComponentModePool)
+				proc.setPoolSize(uint8(procValue.Metadata.PoolSize))
 			} else if procValue.Metadata.Sync {
 				proc := net.Get(procName).(*Component)
-				proc.Mode = ComponentModeSync
+				proc.setMode(ComponentModeSync)
 			}
 		}
 

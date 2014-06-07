@@ -20,21 +20,79 @@ const (
 // DefaultComponentMode is the preselected functioning mode of all components being run.
 var DefaultComponentMode = ComponentModeAsync
 
+// Package-internal interface that Component conforms to - simplifies RunProc() code
+type component interface {
+	getIsRunning() bool
+	setIsRunning(running bool)
+	getNet() *Graph
+	setNet(g *Graph)
+	getMode() int8
+	getPoolSize() uint8
+	setPoolSize(size uint8)
+	getTerm() chan struct{}
+	closeTerm()
+}
+
 // Component is a generic flow component that has to be contained in concrete components.
 // It stores network-specific information.
 type Component struct {
 	// Is running flag indicates that the process is currently running.
-	IsRunning bool
+	isRunning bool
 	// Net is a pointer to network to inform it when the process is started and over
 	// or to change its structure at run time.
-	Net *Graph
+	net *Graph
 	// Mode is component's functioning mode.
-	Mode int8
+	mode int8
 	// PoolSize is used to define pool size when using ComponentModePool.
-	PoolSize uint8
+	poolSize uint8
 	// Term chan is used to terminate the process immediately without closing
 	// any channels.
-	Term chan struct{}
+	term chan struct{}
+}
+
+func (c *Component) getIsRunning() bool {
+	return c.isRunning
+}
+
+func (c *Component) setIsRunning(running bool) {
+	c.isRunning = running
+}
+
+func (c *Component) getNet() *Graph {
+	return c.net
+}
+
+func (c *Component) setNet(n *Graph) {
+	c.net = n
+}
+
+func (c *Component) getMode() int8 {
+	return c.mode
+}
+
+func (c *Component) setMode(mode int8) {
+	c.mode = mode
+}
+
+func (c *Component) getPoolSize() uint8 {
+	return c.poolSize
+}
+
+func (c *Component) setPoolSize(size uint8) {
+	c.poolSize = size
+}
+
+func (c *Component) getTerm() chan struct{} {
+	if c.term == nil {
+		c.term = make(chan struct{})
+	}
+	return c.term
+}
+
+func (c *Component) closeTerm() {
+	term := c.term
+	c.term = nil
+	close(term)
 }
 
 // Initalizable is the interface implemented by components/graphs with custom initialization code.
@@ -52,6 +110,11 @@ type Shutdowner interface {
 	Shutdown()
 }
 
+type Locker interface {
+	Lock()
+	Unlock()
+}
+
 // postHandler is used to bind handlers to a port
 type portHandler struct {
 	onRecv  reflect.Value
@@ -64,23 +127,25 @@ func RunProc(c interface{}) bool {
 	// Check if passed interface is a valid pointer to struct
 	v := reflect.ValueOf(c)
 	if v.Kind() != reflect.Ptr || v.IsNil() {
-		panic("Argument of flow.Run() is not a valid pointer")
+		panic("Argument of flow.RunProc() is not a valid pointer")
 		return false
 	}
 	vp := v
 	v = v.Elem()
 	if v.Kind() != reflect.Struct {
-		panic("Argument of flow.Run() is not a valid pointer to structure. Got type: " + vp.Type().Name())
+		panic("Argument of flow.RunProc() is not a valid pointer to structure. Got type: " + vp.Type().Name())
 		return false
 	}
 	t := v.Type()
 
-	// Get internal state lock if available
-	hasLock := false
-	var locker sync.Locker
-	if lockField := v.FieldByName("StateLock"); lockField.IsValid() && lockField.Elem().IsValid() {
-		locker, hasLock = lockField.Interface().(sync.Locker)
+	// Get the embedded flow.component
+	vCom, ok := c.(component)
+	if !ok {
+		panic("Argument of flow.RunProc() is not a flow.component")
 	}
+
+	// Get interface to internal state lock, if available
+	locker, hasLock := c.(Locker)
 
 	// Call user init function if exists
 	if initable, ok := c.(Initializable); ok {
@@ -92,31 +157,16 @@ func RunProc(c interface{}) bool {
 	// A group to wait for all recv handlers to finish
 	handlersDone := new(sync.WaitGroup)
 
-	// Get the embedded flow.Component
-	vCom := v.FieldByName("Component")
-	isComponent := vCom.IsValid() && vCom.Type().Name() == "Component"
-
-	if !isComponent {
-		panic("Argument of flow.Run() is not a flow.Component")
-	}
-
 	// Get the component mode
-	componentMode := DefaultComponentMode
-	var poolSize uint8 = 0
-	if vComMode := vCom.FieldByName("Mode"); vComMode.IsValid() {
-		componentMode = int(vComMode.Int())
-	}
-	if vComPoolSize := vCom.FieldByName("PoolSize"); vComPoolSize.IsValid() {
-		poolSize = uint8(vComPoolSize.Uint())
-	}
+	componentMode := vCom.getMode()
+	poolSize := vCom.getPoolSize()
 
 	// Create a slice of select cases and port handlers
 	cases := make([]reflect.SelectCase, 0, t.NumField())
 	handlers := make([]portHandler, 0, t.NumField())
 
 	// Make and listen on termination channel
-	vCom.FieldByName("Term").Set(reflect.MakeChan(vCom.FieldByName("Term").Type(), 0))
-	cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: vCom.FieldByName("Term")})
+	cases = append(cases, reflect.SelectCase{Dir: reflect.SelectRecv, Chan: reflect.ValueOf(vCom.getTerm())})
 	handlers = append(handlers, portHandler{})
 
 	// Iterate over struct fields and bind handlers
@@ -169,10 +219,10 @@ func RunProc(c interface{}) bool {
 		inputsClose.Done()
 	}
 	terminate := func() {
-		if !vCom.FieldByName("IsRunning").Bool() {
+		if !vCom.getIsRunning() {
 			return
 		}
-		vCom.FieldByName("IsRunning").SetBool(false)
+		vCom.setIsRunning(false)
 		for i := 0; i < inputCount; i++ {
 			inputsClose.Done()
 		}
@@ -207,7 +257,7 @@ func RunProc(c interface{}) bool {
 				finable.Finish()
 			}
 			// Close all output ports if the process is still running
-			if vCom.FieldByName("IsRunning").Bool() {
+			if vCom.getIsRunning() {
 				closePorts()
 			}
 		}
@@ -276,7 +326,7 @@ func RunProc(c interface{}) bool {
 	}
 
 	// Indicate the process as running
-	vCom.FieldByName("IsRunning").SetBool(true)
+	vCom.setIsRunning(true)
 
 	go func() {
 		// Wait for all inputs to be closed
@@ -288,8 +338,9 @@ func RunProc(c interface{}) bool {
 		shutdown()
 
 		// Get the embedded flow.Component and check if it belongs to a network
-		if vNet := vCom.FieldByName("Net"); vNet.IsValid() && !vNet.IsNil() {
-			if vNetCtr, hasNet := vNet.Interface().(netController); hasNet {
+		vNet := vCom.getNet()
+		if vNet != nil {
+			if vNetCtr, hasNet := reflect.ValueOf(vNet).Interface().(netController); hasNet {
 				// Remove the instance from the network's WaitGroup
 				vNetCtr.getWait().Done()
 			}
@@ -302,25 +353,13 @@ func RunProc(c interface{}) bool {
 // It doesn't close any in or out ports of the process, so it can be
 // replaced without side effects.
 func StopProc(c interface{}) bool {
-	// Check if passed interface is a valid pointer to struct
-	v := reflect.ValueOf(c)
-	if v.Kind() != reflect.Ptr || v.IsNil() {
-		panic("Argument of TermProc() is not a valid pointer")
-		return false
+
+	// Get the embedded flow.component
+	vCom, ok := c.(component)
+	if !ok {
+		panic("Argument of flow.StopProc() is not a flow.component")
 	}
-	vp := v
-	v = v.Elem()
-	if v.Kind() != reflect.Struct {
-		panic("Argument of TermProc() is not a valid pointer to structure. Got type: " + vp.Type().Name())
-		return false
-	}
-	// Get the embedded flow.Component
-	vCom := v.FieldByName("Component")
-	isComponent := vCom.IsValid() && vCom.Type().Name() == "Component"
-	if !isComponent {
-		panic("Argument of TermProc() is not a flow.Component")
-	}
-	// Send the termination signal
-	vCom.FieldByName("Term").Close()
+
+	vCom.closeTerm()
 	return true
 }
