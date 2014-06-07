@@ -68,11 +68,11 @@ func (c *Component) setNet(n *Graph) {
 	c.net = n
 }
 
-func (c *Component) getMode() int8 {
+func (c *Component) getMode() ComponentMode {
 	return c.mode
 }
 
-func (c *Component) setMode(mode int8) {
+func (c *Component) setMode(mode ComponentMode) {
 	c.mode = mode
 }
 
