@@ -173,7 +173,7 @@ func TestRuntimeNetwork(t *testing.T) {
 	net.SetInPort("Start", start)
 	net.SetOutPort("Out", out)
 
-	RunNet(net)
+	runNet(net)
 
 	// Wait for the network setup
 	<-net.SuspendUntilCanAcceptInputs()

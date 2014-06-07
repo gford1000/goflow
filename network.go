@@ -5,6 +5,11 @@ import (
 	"sync"
 )
 
+// Basic graph structure, allowing extension
+type BaseGraph struct {
+	graph
+}
+
 const graphConstructor = "Graph"
 
 // NewGraph creates a new graph that can be modified at run-time.
@@ -534,9 +539,9 @@ func (n *graph) Run() {
 	n.waitGrp.Add(len(n.procs))
 	for _, v := range n.procs {
 		if c, ok := v.(component); ok {
-			RunProc(c)
+			runProc(c)
 		} else if g, ok := v.(Graph); ok {
-			RunNet(g)
+			runNet(g)
 		} else {
 			panic("Unable to run network")
 		}
@@ -657,7 +662,7 @@ func (n *graph) StopProc(procName string) bool {
 		return false
 	}
 	if c, ok := proc.(component); ok {
-		StopProc(c)
+		stopProc(c)
 	} else if g, ok := proc.(Graph); ok {
 		g.Stop()
 	} else {
@@ -764,7 +769,7 @@ func (n *graph) UnsetOutPort(name string) bool {
 
 // RunNet runs the network by starting all of its processes.
 // It runs Init/Finish handlers if the network implements Initializable/Finalizable interfaces.
-func RunNet(n Graph) {
+func runNet(n Graph) {
 	net := n
 
 	// Call user init function if exists

@@ -28,7 +28,7 @@ func init() {
 
 // A graph to test network features
 type testNet struct {
-	graph
+	BaseGraph
 
 	InitTestFlag int
 	FinTestFlag  chan bool
@@ -82,7 +82,7 @@ func TestConnection(t *testing.T) {
 	net.SetOutPort("Out", out)
 
 	// Run the test network
-	RunNet(net)
+	runNet(net)
 
 	in <- 12
 	i := <-out
@@ -106,7 +106,7 @@ func TestConnection(t *testing.T) {
 
 // Structure to test 2-level composition
 type compositeTest struct {
-	graph
+	BaseGraph
 }
 
 // Creates a composite with processes and subnets
@@ -153,7 +153,7 @@ func TestComposite(t *testing.T) {
 	net.SetOutPort("Out", out)
 
 	// Run the test network
-	RunNet(net)
+	runNet(net)
 
 	in <- 42
 	i := <-out
@@ -231,7 +231,7 @@ func TestMultiOutChannel(t *testing.T) {
 	n.SetInPort("In", in)
 	n.SetOutPort("Out1", out1)
 	n.SetOutPort("Out2", out2)
-	RunNet(n)
+	runNet(n)
 
 	in <- 42
 	i := <-out1
@@ -277,7 +277,7 @@ func TestIIP(t *testing.T) {
 	net.SetInPort("In", in)
 	net.SetOutPort("Out", out)
 
-	RunNet(net)
+	runNet(net)
 
 	h := <-out
 	if h != 123 {
@@ -371,7 +371,7 @@ func TestStopNet(t *testing.T) {
 	s.SetInPort("In", in)
 	s.SetOutPort("Out", out)
 
-	RunNet(s)
+	runNet(s)
 	for i := 0; i < 10; i++ {
 		in <- i
 	}

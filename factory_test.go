@@ -31,7 +31,7 @@ func TestFactory(t *testing.T) {
 	e1 := procs["e1"].(*echoer)
 	e1.In = in
 	e1.Out = out
-	RunProc(e1)
+	runProc(e1)
 	for i := 0; i < 10; i++ {
 		in <- i
 		i2 := <-out
@@ -60,7 +60,7 @@ func TestFactoryConnection(t *testing.T) {
 	net.SetInPort("In", in)
 	net.SetOutPort("Out", out)
 
-	RunNet(net)
+	runNet(net)
 
 	in <- 123
 	i := <-out
@@ -86,7 +86,7 @@ func TestFactorySubgraph(t *testing.T) {
 	net.SetInPort("In", in)
 	net.SetOutPort("Out", out)
 
-	RunNet(net)
+	runNet(net)
 
 	in <- 123
 	i := <-out

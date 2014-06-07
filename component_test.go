@@ -34,7 +34,7 @@ func TestSingleInput(t *testing.T) {
 	out := make(chan int, 10)
 	d.In = in
 	d.Out = out
-	RunProc(d)
+	runProc(d)
 	for i := 0; i < 10; i++ {
 		in <- i
 		i2 := <-out
@@ -111,7 +111,7 @@ func TestStateLock(t *testing.T) {
 	out := make(chan int, 10)
 	l.In = in
 	l.Out = out
-	RunProc(l)
+	runProc(l)
 	// Simulate parallel writing and count the sum
 	sum := 0
 	for i := 1; i <= 1000; i++ {
@@ -181,7 +181,7 @@ func TestSyncLock(t *testing.T) {
 	out := make(chan int, 10)
 	l.In = in
 	l.Out = out
-	RunProc(l)
+	runProc(l)
 	// Simulate parallel writing and count the sum
 	sum := 0
 	for i := 1; i <= 1000; i++ {
@@ -242,7 +242,7 @@ func TestInitFinish(t *testing.T) {
 	out := make(chan int)
 	i.In = in
 	i.Out = out
-	RunProc(i)
+	runProc(i)
 	// Pass a value, the result must be affected by flag state
 	in <- 2
 	n2 := <-out
@@ -277,7 +277,7 @@ func TestClose(t *testing.T) {
 	c.setNet(createNet())
 	in := make(chan int)
 	c.In = in
-	RunProc(c)
+	runProc(c)
 	in <- 1
 	close(in)
 	c.getNet().Wait()
@@ -311,7 +311,7 @@ func TestShutdown(t *testing.T) {
 	s.setNet(createNet())
 	in := make(chan int)
 	s.In = in
-	RunProc(s)
+	runProc(s)
 	in <- 1
 	close(in)
 	s.getNet().Wait()
@@ -328,7 +328,7 @@ func TestPoolMode(t *testing.T) {
 	out := make(chan int, 20)
 	d.In = in
 	d.Out = out
-	RunProc(d)
+	runProc(d)
 	for i := 0; i < 10; i++ {
 		in <- i
 	}
@@ -365,7 +365,7 @@ func TestStopProc(t *testing.T) {
 	s.In = in
 	s.Out = out
 	// Test normal mode first
-	RunProc(s)
+	runProc(s)
 	for i := 0; i < 10; i++ {
 		in <- i
 	}
@@ -376,7 +376,7 @@ func TestStopProc(t *testing.T) {
 		}
 	}
 	// Stop without closing chans
-	StopProc(s)
+	stopProc(s)
 	// Wait for finish signal
 	fin := <-out
 	if fin != 909 {
@@ -385,7 +385,7 @@ func TestStopProc(t *testing.T) {
 	// Run again in Pool mode
 	s.Component.setMode(ComponentModePool)
 	s.Component.setPoolSize(4)
-	RunProc(s)
+	runProc(s)
 	for i := 0; i < 10; i++ {
 		in <- i
 	}
@@ -396,7 +396,7 @@ func TestStopProc(t *testing.T) {
 		}
 	}
 	// Stop without closing chans
-	StopProc(s)
+	stopProc(s)
 	// Wait for finish signal
 	fin = <-out
 	if fin != 909 {

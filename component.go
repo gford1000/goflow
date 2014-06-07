@@ -126,7 +126,7 @@ type portHandler struct {
 
 // RunProc runs event handling loop on component ports.
 // It returns true on success or panics with error message and returns false on error.
-func RunProc(c component) bool {
+func runProc(c component) bool {
 	// Check if passed interface is a valid pointer to struct
 	v := reflect.ValueOf(c)
 	if v.Kind() != reflect.Ptr || v.IsNil() {
@@ -351,7 +351,7 @@ func RunProc(c component) bool {
 // StopProc terminates the process if it is running.
 // It doesn't close any in or out ports of the process, so it can be
 // replaced without side effects.
-func StopProc(c interface{}) bool {
+func stopProc(c interface{}) bool {
 
 	// Get the embedded flow.component
 	vCom, ok := c.(component)
