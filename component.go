@@ -26,9 +26,10 @@ var DefaultComponentMode = ComponentModeAsync
 type component interface {
 	getIsRunning() bool
 	setIsRunning(running bool)
-	getNet() *Graph
-	setNet(g *Graph)
+	getNet() Graph
+	setNet(g Graph)
 	getMode() ComponentMode
+	setMode(mode ComponentMode)
 	getPoolSize() uint8
 	setPoolSize(size uint8)
 	getTerm() chan struct{}
@@ -42,7 +43,7 @@ type Component struct {
 	isRunning bool
 	// Net is a pointer to network to inform it when the process is started and over
 	// or to change its structure at run time.
-	net *Graph
+	net Graph
 	// Mode is component's functioning mode.
 	mode ComponentMode
 	// PoolSize is used to define pool size when using ComponentModePool.
@@ -60,11 +61,11 @@ func (c *Component) setIsRunning(running bool) {
 	c.isRunning = running
 }
 
-func (c *Component) getNet() *Graph {
+func (c *Component) getNet() Graph {
 	return c.net
 }
 
-func (c *Component) setNet(n *Graph) {
+func (c *Component) setNet(n Graph) {
 	c.net = n
 }
 
@@ -125,7 +126,7 @@ type portHandler struct {
 
 // RunProc runs event handling loop on component ports.
 // It returns true on success or panics with error message and returns false on error.
-func RunProc(c interface{}) bool {
+func RunProc(c component) bool {
 	// Check if passed interface is a valid pointer to struct
 	v := reflect.ValueOf(c)
 	if v.Kind() != reflect.Ptr || v.IsNil() {
@@ -340,12 +341,8 @@ func RunProc(c interface{}) bool {
 		shutdown()
 
 		// Get the embedded flow.Component and check if it belongs to a network
-		vNet := vCom.getNet()
-		if vNet != nil {
-			if vNetCtr, hasNet := reflect.ValueOf(vNet).Interface().(netController); hasNet {
-				// Remove the instance from the network's WaitGroup
-				vNetCtr.getWait().Done()
-			}
+		if vNet := vCom.getNet(); vNet != nil {
+			vNet.Done()
 		}
 	}()
 	return true

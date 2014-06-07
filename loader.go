@@ -41,7 +41,7 @@ type graphDescription struct {
 
 // ParseJSON converts a JSON network definition string into
 // a flow.Graph object that can be run or used in other networks
-func ParseJSON(js []byte) *Graph {
+func ParseJSON(js []byte) Graph {
 	// Parse JSON into Go struct
 	var descr graphDescription
 	err := json.Unmarshal(js, &descr)
@@ -52,7 +52,7 @@ func ParseJSON(js []byte) *Graph {
 
 	constructor := func() interface{} {
 		// Create a new Graph
-		net := new(Graph)
+		net := new(graph)
 		net.InitGraphState()
 
 		// Add processes to the network
@@ -60,11 +60,11 @@ func ParseJSON(js []byte) *Graph {
 			net.AddNew(procValue.Component, procName)
 			// Process mode detection
 			if procValue.Metadata.PoolSize > 0 {
-				proc := net.Get(procName).(*Component)
+				proc := net.Get(procName).(component)
 				proc.setMode(ComponentModePool)
 				proc.setPoolSize(uint8(procValue.Metadata.PoolSize))
 			} else if procValue.Metadata.Sync {
-				proc := net.Get(procName).(*Component)
+				proc := net.Get(procName).(component)
 				proc.setMode(ComponentModeSync)
 			}
 		}
@@ -113,12 +113,12 @@ func ParseJSON(js []byte) *Graph {
 		Register(descr.Properties.Name, constructor)
 	}
 
-	return constructor().(*Graph)
+	return constructor().(*graph)
 }
 
 // LoadJSON loads a JSON graph definition file into
-// a flow.Graph object that can be run or used in other networks
-func LoadJSON(filename string) *Graph {
+// a flow.graph object that can be run or used in other networks
+func LoadJSON(filename string) Graph {
 	js, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil

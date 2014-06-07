@@ -51,14 +51,27 @@ func init() {
 
 // Summarizer component sums all its input packets and
 // produces a sum output just before shutdown
+// Utilizes Initializable and Lockable interfaces to
+// provide concurrent access to state, correctly initialised
 type summarizer struct {
 	Component
-	In <-chan int
-	// Flush <-chan bool
+	In        <-chan int
 	Sum       chan<- int
-	StateLock *sync.Mutex
+	stateLock *sync.Mutex
 
 	current int
+}
+
+func (s *summarizer) Init() {
+	s.stateLock = new(sync.Mutex)
+}
+
+func (s *summarizer) Lock() {
+	s.stateLock.Lock()
+}
+
+func (s *summarizer) Unlock() {
+	s.stateLock.Unlock()
 }
 
 func newSummarizer() interface{} {
@@ -163,7 +176,7 @@ func TestRuntimeNetwork(t *testing.T) {
 	RunNet(net)
 
 	// Wait for the network setup
-	<-net.Ready()
+	<-net.SuspendUntilCanAcceptInputs()
 
 	// Close start to halt it normally
 	close(start)
@@ -173,5 +186,5 @@ func TestRuntimeNetwork(t *testing.T) {
 		t.Errorf("Wrong result: %d != 110", i)
 	}
 
-	<-net.Wait()
+	<-net.SuspendUntilFinished()
 }

@@ -28,7 +28,7 @@ func init() {
 
 // A graph to test network features
 type testNet struct {
-	Graph
+	graph
 
 	InitTestFlag int
 	FinTestFlag  chan bool
@@ -101,12 +101,12 @@ func TestConnection(t *testing.T) {
 	if net.InitTestFlag != 456 {
 		t.Errorf("Finish: %d != %d", net.InitTestFlag, 456)
 	}
-	<-net.Wait()
+	<-net.SuspendUntilFinished()
 }
 
 // Structure to test 2-level composition
 type compositeTest struct {
-	Graph
+	graph
 }
 
 // Creates a composite with processes and subnets
@@ -162,7 +162,7 @@ func TestComposite(t *testing.T) {
 	}
 
 	close(in)
-	<-net.Wait()
+	<-net.SuspendUntilFinished()
 }
 
 type rr struct {
@@ -246,12 +246,12 @@ func TestMultiOutChannel(t *testing.T) {
 	}
 
 	close(in)
-	<-n.Wait()
+	<-n.SuspendUntilFinished()
 }
 
 // A struct to test IIPs support
 type iipNet struct {
-	Graph
+	graph
 }
 
 // Creates a new test network with an IIP
@@ -285,7 +285,7 @@ func TestIIP(t *testing.T) {
 	}
 
 	close(in)
-	<-net.Wait()
+	<-net.SuspendUntilFinished()
 }
 
 // A simple syncrhonous summator for 2 arguments
@@ -340,7 +340,7 @@ func (s *sum2) OnArg2(a int) {
 
 // A network to test manual Stop() calls
 type stopMeNet struct {
-	Graph
+	graph
 
 	Fin chan int
 }

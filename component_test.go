@@ -227,8 +227,8 @@ func (i *initfin) Finish() {
 	testInitFinFlag = 456
 }
 
-func createNet() *Graph {
-	net := new(Graph)
+func createNet() *graph {
+	net := new(graph)
 	net.InitGraphState()
 	net.waitGrp.Add(1)
 	return net
@@ -252,7 +252,7 @@ func TestInitFinish(t *testing.T) {
 	}
 	// Shut the component down and wait for Finish() code
 	close(in)
-	i.getNet().waitGrp.Wait()
+	i.getNet().Wait()
 	if testInitFinFlag != 456 {
 		t.Errorf("%d != %d", testInitFinFlag, 456)
 	}
@@ -281,7 +281,7 @@ func TestClose(t *testing.T) {
 	RunProc(c)
 	in <- 1
 	close(in)
-	c.getNet().waitGrp.Wait()
+	c.getNet().Wait()
 	if closeTestFlag != 789 {
 		t.Errorf("%d != %d", closeTestFlag, 789)
 	}
@@ -315,7 +315,7 @@ func TestShutdown(t *testing.T) {
 	RunProc(s)
 	in <- 1
 	close(in)
-	s.getNet().waitGrp.Wait()
+	s.getNet().Wait()
 	if shutdownTestFlag != 789 {
 		t.Errorf("%d != %d", shutdownTestFlag, 789)
 	}
